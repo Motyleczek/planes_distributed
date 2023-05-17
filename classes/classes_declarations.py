@@ -1,5 +1,5 @@
 # TODO
 
 ID = int
-Address = str
+Address = int
 

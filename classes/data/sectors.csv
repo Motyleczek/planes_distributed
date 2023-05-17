@@ -1,8 +1,8 @@
-﻿id,has_airport,neighbours_id,neighbours_address
-1,True,nn276n,nnnnnn
-2,True,nnn371,nnnnnn
-3,True,2nnn47,nnnnnn
-4,True,73nnn5,nnnnnn
-5,True,674nnn,nnnnnn
-6,True,n175nn,nnnnnn
-7,False,1234567,nnnnnn
+﻿id,has_airport,neighbours_id
+1,True,nn276n
+2,True,nnn371
+3,True,2nnn47
+4,True,73nnn5
+5,True,674nnn
+6,True,n175nn
+7,False,1234567

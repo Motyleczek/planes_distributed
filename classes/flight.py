@@ -20,12 +20,12 @@ class Plane:
 class Flight:
     def __init__(self, indx, path, date, plane_id):
         self.id: ID = indx
-        self.adress: Address = None
+        self.adress: Address = 12340 + 50 + indx
         self.controller: Tuple[ID, Address] = None
         self.flight_sector_path: List[ID] = path
         self.flight_date: str = date
         self.distance_to_next_sector: float = None
-        self.plane: int = plane_id
+        self.plane_id: ID = plane_id
     
     # to alter route:
     def go_to(self, ID):

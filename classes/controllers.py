@@ -10,15 +10,14 @@ MAX_PLANES = 5
 ####
 # TODO init for sure
 class Sector:
-    def __init__(self, id, has_airport, neighbours_id, neighbours_address):
+    def __init__(self, id, has_airport, neighbours_id):
         self.id: ID = id
         self.has_airport: bool = has_airport
         self.neighbours_id: Tuple[
             Optional[ID], Optional[ID], Optional[ID], Optional[ID], Optional[ID], Optional[ID]] = neighbours_id
         self.neighbours_address: Tuple[
             Optional[Address], Optional[Address], Optional[Address], Optional[Address], Optional[Address], Optional[
-                Address]] = neighbours_address
-        pass
+                Address]] = tuple([12340 + idx if idx is not None else idx for idx in neighbours_id])
 
     def get_neighbours(self):
         return self.neighbours_id, self.neighbours_address
@@ -32,7 +31,7 @@ class Sector:
 class Controller:
     def __init__(self, id, sector):
         self.id: ID = id
-        self.address: Address = None
+        self.address: Address = 12340 + id
         self.plane_list: List[Plane] = None
         self.max_planes: int = MAX_PLANES
         self.flight_list: List[Tuple[ID, Address]] = None
