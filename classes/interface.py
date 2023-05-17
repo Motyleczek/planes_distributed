@@ -1,7 +1,7 @@
 # imports
-from classes_declarations import ID
-from controllers import Controller
-from supervisor import Supervisor
+from classes.classes_declarations import ID
+from classes.controllers import Controller
+from classes.supervisor import Supervisor
 ###
 
 # TODO

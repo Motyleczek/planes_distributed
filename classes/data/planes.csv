@@ -1,0 +1,6 @@
+﻿indx,model,max_speed,colour,engines,purpose
+1,Boeing 747,900,white,4,airliner
+2,ATR 72,500,orange,2,airliner
+3,An-225 Mrija,850,white,6,cargo
+4,Lockheed C-130 Hercules,610,white,4,airlifter
+5,Cessna 402,430,yellow,2,airliner
