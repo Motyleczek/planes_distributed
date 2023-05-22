@@ -34,7 +34,7 @@ class Flight:
     def get_distance(self):
         return self.distance_to_next_sector
     
-    def update(self, time_impulse):
+    def update(self):
         pass
 
 

@@ -157,5 +157,6 @@ if __name__ == "__main__":
     #     pass
 
     # will use to update states after a time impulse given from outside
-    def update_state(self, time_impulse):
+    def update_state(self):
+        print(f"Updating state of controller {self.id}")
         pass

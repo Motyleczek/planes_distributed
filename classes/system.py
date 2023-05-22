@@ -19,6 +19,7 @@ class System:
         self.list_of_planes: List[Plane]
         self.error_log: List[str] = planes
         self.update_interval: int = update_interval
+        self.updates_done: int = 0
 
     def add_flight(self):
         pass
@@ -39,19 +40,22 @@ class System:
 
     # for simulation, update step
     def _update(self):
-        print("doing update")
-        pass
+        for controller_ in self.list_of_controllers:
+            controller_.update_state()
+        self.updates_done += 1
     
     def _simulation_run(self):
         t = threading.Timer(self.update_interval, self._simulation_run)
         t.name = "update_thread"
+        print(f"\nContinuing updates, num. {self.updates_done}")
         self._update()
         t.start()
         
     def simulation_start(self):
         t = threading.Timer(self.update_interval, self._simulation_run)
         t.name = "update_thread"
-        self.update()
+        print("\nStarting updates:")
+        self._update()
         t.start()
         
         
