@@ -1,6 +1,6 @@
 # imports
-from classes_declarations import Address, ID
-from typing import Tuple, List
+from classes.classes_declarations import Address, ID
+from typing import Tuple, List, datetime
 
 
 # TODO
@@ -26,6 +26,10 @@ class Flight:
         self.flight_date: str = date
         self.distance_to_next_sector: float = None
         self.plane_id: ID = plane_id
+        self.close_to_border: float = self.distance_to_next_sector * 0.1
+        self.close_to_leaving: bool = False
+        self.is_leaving: bool = False
+        self.last_update_time: datetime = None
     
     # to alter route:
     def go_to(self, ID):

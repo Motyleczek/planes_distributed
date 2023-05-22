@@ -1,6 +1,6 @@
 # imports:
 from typing import Tuple, List, Optional
-from classes_declarations import Address, ID
+from classes_declarations import Address, ID, UPDATE
 from flight import Plane
 import numpy as np
 import socket
@@ -100,6 +100,29 @@ class Controller:
     def disconnect(self):
         self.connected = False
 
+    ###
+    def _update_self(self):
+        pass
+    
+    def _update_self2(self):
+        pass
+    ###
+    
+    
+    # will use to update states after a time impulse given from outside
+    def update_state(self):
+        print(f"Updating state of controller {self.id}")
+        if self.flight_list is None:
+            print(f"Nothing to update in controller {self.id}")
+            pass
+        elif len(self.flight_list) == 0:
+            print(f"Nothing to update in controller {self.id}")
+            pass
+        
+        for flight_ in self.flight_list:
+            flight_.update()
+            
+            
 
 def create_flight_controller():
     fc_id = int(input("Enter flight controller ID: "))
@@ -155,8 +178,3 @@ if __name__ == "__main__":
 
     # def receive_info(self):
     #     pass
-
-    # will use to update states after a time impulse given from outside
-    def update_state(self):
-        print(f"Updating state of controller {self.id}")
-        pass
