@@ -1,7 +1,7 @@
 # imports:
 from typing import Tuple, List, Optional
 from classes_declarations import Address, ID, UPDATE
-from flight import Plane
+from flight import Plane, Flight
 import numpy as np
 import socket
 import threading
@@ -108,7 +108,34 @@ class Controller:
         pass
     ###
     
+    #TODO
+    # sending info to controller who will receive the plane
+    def send_info(self, flight_nearing: Flight):
+        new_controller_id, new_controller_address = flight_nearing.controller
+        self.connect_to(new_controller_address)
+        ####
+        self.broadcast("TODO INFO")
+        ####
+        self.disconnect()
+        pass
     
+    #TODO
+    # sending over the plane to another controller, DESTROY SAID PLANE FROM OUR FLIGHT LIST
+    def send_plane(self, flight_over: Flight):
+        new_controller_id, new_controller_address = flight_over.controller
+        flight_over.new_controller_update()
+        self.connect_to(new_controller_address)
+        ####
+        self.broadcast("TODO SENDING PLANE")
+        ####
+        self.disconnect()
+        self.flight_list.pop(flight_over)   # this might be causing problems, pay attention during debug
+        pass
+    
+    # receiving plane into our midsts:
+    def receive_plane(self, flight_over: Flight):
+        self.flight_list.append(flight_over)
+        
     # will use to update states after a time impulse given from outside
     def update_state(self):
         print(f"Updating state of controller {self.id}")
@@ -121,6 +148,12 @@ class Controller:
         
         for flight_ in self.flight_list:
             flight_.update()
+            if flight_.close_to_leaving:
+                if flight_.is_leaving:
+                    self.send_plane(flight_)
+                else:
+                    self.send_info(flight_)
+            
             
             
 
