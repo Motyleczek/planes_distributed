@@ -1,5 +1,5 @@
 # imports
-from classes.classes_declarations import Address, ID
+from classes_declarations import Address, ID
 from typing import Tuple, List
 
 
