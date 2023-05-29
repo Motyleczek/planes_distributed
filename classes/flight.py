@@ -1,6 +1,7 @@
 # imports
 import time
 from classes.classes_declarations import Address, ID, SECTOR_DISTANCE
+from classes.controllers import Controller
 from typing import Tuple, List, datetime
 
 
@@ -23,7 +24,7 @@ class Flight:
     def __init__(self, indx, path, date, plane_id):
         self.id: ID = indx
         self.adress: Address = 12340 + 50 + indx
-        self.controller: Tuple[ID, Address] = None
+        self.controller: Tuple[ID, Address] = None  # TODO: inicjalizacja tego gdzie on zaczyna przy tworzeniu systemu, Asia
         self.flight_sector_path: List[ID] = path
         self.flight_date: str = date
         self.plane_id: ID = plane_id
@@ -33,6 +34,7 @@ class Flight:
         self.next_sector_id: ID = path[1]
         
         #TODO#
+        # this could be changed to make the planes update faster or slower etc #
         self.speed = 4 #thingies per second
         ######
         self.distance_to_next_sector: float = SECTOR_DISTANCE
@@ -49,12 +51,23 @@ class Flight:
         
     # to alter route:
     def go_to(self, ID):
-        pass
+        raise NotImplementedError()
     
     def get_distance(self):
         return self.distance_to_next_sector
     
-    def new_controller_update(self):
+    def new_controller_update(self, list_of_controllers: List[Controller]):
+        """
+        funcitn to update controller and sector of the current flight
+        
+        params:
+        list_of_controllers - list of Controllers passed from system
+        
+        returns:
+        none
+        """
+        list_of_controllers_copy = list_of_controllers.copy()
+        
         self.num_of_sector += 1
         try:
             self.current_sector_id = self.flight_sector_path[self.num_of_sector]
@@ -66,12 +79,26 @@ class Flight:
             self.next_sector_id = self.flight_sector_path[self.num_of_sector + 1]
         except:
             self.next_sector_id = 0
+            
+        for controller in list_of_controllers_copy:
+            if controller.id == self.current_sector_id:
+                self.controller = (self.current_sector_id, controller.port)
+                break
         
         self.current_distance_to_next_sector = SECTOR_DISTANCE + self.current_distance_to_next_sector
         
         
         
     def update(self):
+        """
+        Funciton to update state of flight
+        
+        Params:
+        none
+        
+        returns:
+        None
+        """
         current_time = time.time()
         time_elapsed = current_time - self.last_update_time
         distance_travelled = time_elapsed * self.speed
@@ -80,6 +107,7 @@ class Flight:
             self.close_to_leaving = True
             if self.current_distance_to_next_sector <= self.close_to_leaving_dist:
                 self.is_leaving = True
+                
         self.last_update_time = time.time()
 
 

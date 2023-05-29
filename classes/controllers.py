@@ -1,6 +1,6 @@
 # imports:
 from typing import Tuple, List, Optional
-from classes_declarations import Address, ID, UPDATE
+from classes_declarations import Address, ID, UPDATE, INCOMING_PLANE, INCOMING_INFO
 from flight import Plane, Flight
 import numpy as np
 import socket
@@ -41,6 +41,7 @@ class Controller:
         self.plane_list: List[Plane] = None
         self.max_planes: int = MAX_PLANES
         self.flight_list: List[Tuple[ID, Address]] = None
+        self.incoming_flights: List[ID] = None
         # self.sector: Sector = sector
 
     def start(self):
@@ -65,7 +66,33 @@ class Controller:
                 if not data:
                     break
                 message = pickle.loads(data)
-                print(f"Flight controller {self.id} received data: {message}")
+                if type(message) is str:
+                    # if we receive only info without a plane
+                    print(f"Flight controller {self.id} received data: {message}")
+                else:
+                    text, flight_or_id = message
+                    print(f"Flight controller {self.id} received command: {text}")
+                    if text == UPDATE:
+                        print(f"Updating controller {self.id}")
+                        self.update_state()
+                    if text == INCOMING_INFO:
+                        print(f"Receiving info about plane {flight_or_id}")
+                        if self.incoming_flights is None:
+                            self.incoming_flights = [flight_or_id]
+                        else:
+                            self.incoming_flights.append(flight_or_id)
+                    if text == INCOMING_PLANE:
+                        print(f"Receiving flight {flight_or_id}")
+                        if flight_or_id.id in self.incoming_flights:
+                            self.incoming_flights.remove(flight_or_id.id)
+                        else:
+                            print("ALARM, PLANE WIHTOUT INFO")
+                            # TODO: sending this alarm somewhere? how to send this to supervisor from this place?
+                        self.flight_list.append(flight_or_id)
+                        if len(self.flight_list) > self.max_planes:
+                            print("ALARM, TOO MANY PLANES")
+                            # TODO: sending this alarm somewhere? how to send this to supervisor from this place?
+                            
             except ConnectionResetError:
                 break
 
@@ -90,10 +117,12 @@ class Controller:
         self.connections.remove(remote_socket)
         remote_socket.close()
 
-    def broadcast(self, message):
+    # TODO: zrobić tak zeby wysylac spiclowana krotke
+    def broadcast(self, data: Optional(str, Tuple(str, object))):
+        data_picled = pickle.dumps(data)
         for connection in self.connections:
             try:
-                connection.send(message)
+                connection.send(data_picled)
             except ConnectionResetError:
                 continue
 
@@ -111,33 +140,67 @@ class Controller:
     #TODO
     # sending info to controller who will receive the plane
     def send_info(self, flight_nearing: Flight):
+        """
+        Function to send info about a flight which will be ready to leave in the near future, determined through update_state()
+        
+        Params:
+        flight_nearing - Flight class object of the flight that will soon be ready to change controller
+        
+        Returns:
+        None
+        """
         new_controller_id, new_controller_address = flight_nearing.controller
         self.connect_to(new_controller_address)
         ####
-        self.broadcast("TODO INFO")
+        data = (INCOMING_INFO, flight_nearing.id)
+        data_pickled = pickle.dumps(data)
+        self.broadcast(data_pickled)
         ####
         self.disconnect()
         pass
     
-    #TODO
-    # sending over the plane to another controller, DESTROY SAID PLANE FROM OUR FLIGHT LIST
-    def send_plane(self, flight_over: Flight):
+    
+    def send_plane(self, flight_over: Flight, ):
+        """
+        Function to send a plane over which was deemed ready to leave our airspace through update_state()
+        
+        Params:
+        flight_over - Flight class object of the flight that will cross over to the next controller
+        
+        Returns:
+        None
+        """
         new_controller_id, new_controller_address = flight_over.controller
+        if new_controller_id == self.id:
+            raise ValueError("Sending plane to ourselfes, wrong!")
+        
         flight_over.new_controller_update()
         self.connect_to(new_controller_address)
         ####
-        self.broadcast("TODO SENDING PLANE")
+        data = (INCOMING_INFO, flight_over)
+        data_pickled = pickle.dumps(data)
+        self.broadcast(data_pickled)
         ####
         self.disconnect()
-        self.flight_list.pop(flight_over)   # this might be causing problems, pay attention during debug
-        pass
-    
-    # receiving plane into our midsts:
-    def receive_plane(self, flight_over: Flight):
-        self.flight_list.append(flight_over)
+        
+        # this might be causing problems, pay attention during debug
+        for i, flight in self.flight_list:
+            if flight.id == flight_over.id:
+                self.flight_list.pop(i)
+                break  
+        pass   
         
     # will use to update states after a time impulse given from outside
-    def update_state(self):
+    def update_state(self, list_of_controllers):
+        """
+        Function to do updates as called through system at appropiate times
+        
+        Params:
+        list_of_controllers: used by update flight to be able to update its controller
+        
+        Returns:
+        none
+        """
         print(f"Updating state of controller {self.id}")
         if self.flight_list is None:
             print(f"Nothing to update in controller {self.id}")
@@ -150,7 +213,7 @@ class Controller:
             flight_.update()
             if flight_.close_to_leaving:
                 if flight_.is_leaving:
-                    self.send_plane(flight_)
+                    self.send_plane(flight_, list_of_controllers)
                 else:
                     self.send_info(flight_)
             

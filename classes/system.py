@@ -3,6 +3,7 @@ import threading
 from typing import List
 from classes.flight import Flight, Plane
 from classes.controllers import Controller, Sector
+from classes.supervisor import Supervisor, Alert
 #
 
 # TODO could be removed depending on implementation of system_generator
@@ -20,6 +21,7 @@ class System:
         self.error_log: List[str] = planes
         self.update_interval: int = update_interval
         self.updates_done: int = 0
+        self.supervisor: Supervisor = Supervisor()
 
     def add_flight(self):
         pass
@@ -36,12 +38,16 @@ class System:
         pass
 
     def delete_error(self):
-        pass
+        self.supervisor.resolve_alerts()
+    
+    # TODO: how to use this while its in threading >???
+    def add_error(self, alert: Alert):
+        self.supervisor.add_alert(alert)
 
     # for simulation, update step
     def _update(self):
         for controller_ in self.list_of_controllers:
-            controller_.update_state()
+            controller_.update_state(self.list_of_controllers)
         self.updates_done += 1
     
     def _simulation_run(self):
