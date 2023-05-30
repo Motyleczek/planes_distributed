@@ -4,6 +4,10 @@ from typing import List
 from classes.flight import Flight, Plane
 from classes.controllers import Controller, Sector
 from classes.supervisor import Supervisor, Alert
+import matplotlib.pyplot as plt
+from datetime import date
+from datetime import datetime
+
 #
 
 # TODO could be removed depending on implementation of system_generator
@@ -14,8 +18,11 @@ class SectorsGeneral:
 # TODO
 class System:
     def __init__(self, flights, controllers, sectors, planes, update_interval=10):
-        self.list_of_flights: List[Flight] = flights
-        self.list_of_controllers: List[Controller] = controllers
+        self.list_of_flights: List[Flight] = flights    # this might not be updated throughout the duration of the simulation!
+                                                        # use only as indication of initial states of flights, not current states
+                                                        
+        self.list_of_controllers: List[Controller] = controllers    # this will be updated throughout the course of simulation, thus will
+                                                                    # will be used to generate visualisation
         self.list_of_sectors: List[Sector] = sectors
         self.list_of_planes: List[Plane]
         self.error_log: List[str] = planes
@@ -34,10 +41,45 @@ class System:
     def system_reset(self):
         pass
 
+    # TODO
     def generate_visualisation(self):
-        pass
+        """
+        generates visualisation png from source image simulation_map.png and saves it in simulation_visualisations folder
+        saves with timestamp of when the file was saved and the simulation step at which it was saved
+        
+        params:
+        none
+        
+        returns:
+        none
+        """
+        coordinate_of_sector_on_img = {1: (360, 176),
+                               2: (180, 288),
+                               3: (360, 391),
+                               4: (560, 288),
+                               5: (180, 489),
+                               6: (360, 634),
+                               7: (560, 489)}
 
-    def delete_error(self):
+        img = plt.imread('simulation_visualisation/simulation_map.png')
+        for controller in self.list_of_controllers:
+            x, y = coordinate_of_sector_on_img[controller.id]
+            flight_list = []
+            if controller.flight_list is not None:
+                for flights in controller.flight_list:
+                    flight_list.append(flights.id)
+            s = 'flights ids: \n' + str(flight_list) + '\nincoming flights ids: ' + str(controller.incoming_flights)
+            plt.text(x, y, s, bbox=dict(fill=False, edgecolor='green', linewidth=1), fontsize=4)
+       
+        my_time = datetime.min.now()
+        plt.savefig(f"simulation_visualisations/simulation_step_{self.updates_done}_{my_time}.png")
+        pass
+        
+
+    def see_errors(self):
+        self.supervisor.see_alerts()
+        
+    def delete_errors(self):
         self.supervisor.resolve_alerts()
     
     # TODO: how to use this while its in threading >???
@@ -48,6 +90,7 @@ class System:
     def _update(self):
         for controller_ in self.list_of_controllers:
             controller_.update_state(self.list_of_controllers)
+        self.generate_visualisation()
         self.updates_done += 1
     
     def _simulation_run(self):
@@ -58,6 +101,7 @@ class System:
         t.start()
         
     def simulation_start(self):
+        self.generate_visualisation()
         t = threading.Timer(self.update_interval, self._simulation_run)
         t.name = "update_thread"
         print("\nStarting updates:")

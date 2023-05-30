@@ -139,7 +139,7 @@ class Controller:
     
     #TODO
     # sending info to controller who will receive the plane
-    def send_info(self, flight_nearing: Flight):
+    def send_info(self, flight_nearing: Flight, controllers_list: List):
         """
         Function to send info about a flight which will be ready to leave in the near future, determined through update_state()
         
@@ -150,6 +150,7 @@ class Controller:
         None
         """
         new_controller_id, new_controller_address = flight_nearing.controller
+        # TODO new controller add
         self.connect_to(new_controller_address)
         ####
         data = (INCOMING_INFO, flight_nearing.id)
@@ -160,7 +161,7 @@ class Controller:
         pass
     
     
-    def send_plane(self, flight_over: Flight, ):
+    def send_plane(self, flight_over: Flight, controller_list: List):
         """
         Function to send a plane over which was deemed ready to leave our airspace through update_state()
         
@@ -170,21 +171,21 @@ class Controller:
         Returns:
         None
         """
+        flight_over.new_controller_update(controller_list)
         new_controller_id, new_controller_address = flight_over.controller
         if new_controller_id == self.id:
             raise ValueError("Sending plane to ourselfes, wrong!")
         
-        flight_over.new_controller_update()
         self.connect_to(new_controller_address)
         ####
-        data = (INCOMING_INFO, flight_over)
+        data = (INCOMING_PLANE, flight_over)
         data_pickled = pickle.dumps(data)
         self.broadcast(data_pickled)
         ####
         self.disconnect()
         
         # this might be causing problems, pay attention during debug
-        for i, flight in self.flight_list:
+        for i, flight in enumerate(self.flight_list):
             if flight.id == flight_over.id:
                 self.flight_list.pop(i)
                 break  
@@ -215,7 +216,7 @@ class Controller:
                 if flight_.is_leaving:
                     self.send_plane(flight_, list_of_controllers)
                 else:
-                    self.send_info(flight_)
+                    self.send_info(flight_, list_of_controllers)
             
             
             
