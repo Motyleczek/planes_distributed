@@ -56,6 +56,28 @@ class Flight:
     def get_distance(self):
         return self.distance_to_next_sector
     
+    def new_controller_generate(self, list_of_controllers: List[Controller]) -> Tuple(ID, Address):
+        """
+        used in send_info, to get the appropriate controller to send the info to WITHOUT changing the current controller of 
+        flight
+        
+        params: 
+        list_of_controllers - list of controllers in system
+        
+        returns:
+        controller - tuple(ID, Adress) of said controller
+        """
+        
+        list_of_controllers_copy = list_of_controllers.copy()
+        
+        for controller in list_of_controllers_copy:
+            if controller.id == self.next_sector_id:
+                controller = (self.next_sector_id, controller.port)
+                break
+        
+        return controller
+        
+        
     def new_controller_update(self, list_of_controllers: List[Controller]):
         """
         funcitn to update controller and sector of the current flight

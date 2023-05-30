@@ -79,8 +79,10 @@ class Controller:
                         print(f"Receiving info about plane {flight_or_id}")
                         if self.incoming_flights is None:
                             self.incoming_flights = [flight_or_id]
-                        else:
+                        elif not(flight_or_id in self.incoming_flights):
                             self.incoming_flights.append(flight_or_id)
+                        else:
+                            print(f"I ALREADY KNOW ITS INCOMING, said controller {self.id}")
                     if text == INCOMING_PLANE:
                         print(f"Receiving flight {flight_or_id}")
                         if flight_or_id.id in self.incoming_flights:
@@ -149,8 +151,8 @@ class Controller:
         Returns:
         None
         """
-        new_controller_id, new_controller_address = flight_nearing.controller
-        # TODO new controller add
+        new_controller_id, new_controller_address = flight_nearing.new_controller_generate(controllers_list)
+  
         self.connect_to(new_controller_address)
         ####
         data = (INCOMING_INFO, flight_nearing.id)
