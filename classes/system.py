@@ -60,8 +60,18 @@ class System:
                                5: (180, 489),
                                6: (360, 634),
                                7: (560, 489)}
+        coordinate_of_sector_num_on_img =  {1: (384, 133),
+                                            2: (192, 219),
+                                            3: (411, 315),
+                                            4: (656, 210),
+                                            5: (206, 427),
+                                            6: (418, 534),
+                                            7: (661, 583)}
 
+        # solution below (through pyplot) might not be as robust as one through opencv, but it is much easier
+        # to debug with a simple plt.show() in appropriate place
         img = plt.imread('simulation_visualisation/simulation_map.png')
+        plt.imshow(img)
         for controller in self.list_of_controllers:
             x, y = coordinate_of_sector_on_img[controller.id]
             flight_list = []
@@ -70,7 +80,10 @@ class System:
                     flight_list.append(flights.id)
             s = 'flights ids: \n' + str(flight_list) + '\nincoming flights ids: ' + str(controller.incoming_flights)
             plt.text(x, y, s, bbox=dict(fill=False, edgecolor='green', linewidth=1), fontsize=4)
-       
+        for alert in self.supervisor.list_of_alerts:
+            x, y = coordinate_of_sector_num_on_img[alert.id_of_alerd_producer]
+            s = '!!!'
+            plt.text(x, y, s, color='red', fontsize=10)
         my_time = datetime.min.now()
         plt.savefig(f"simulation_visualisations/simulation_step_{self.updates_done}_{my_time}.png")
         pass
