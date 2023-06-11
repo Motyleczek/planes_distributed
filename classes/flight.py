@@ -24,7 +24,7 @@ class Flight:
     def __init__(self, indx, path, date, plane_id):
         self.id: ID = indx
         self.adress: Address = 12340 + 50 + indx
-        self.controller: Tuple[ID, Address] = [(path[0], path[0] + 12340)]  
+        self.controller: Tuple[ID, Address] = (path[0], path[0] + 12340)  
         self.flight_sector_path: List[ID] = path
         self.flight_date: str = date
         self.plane_id: ID = plane_id
