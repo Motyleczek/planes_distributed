@@ -66,14 +66,15 @@ def generate_system(folder: str) -> System:
     sectors = read_sectors_data(folder + '/sectors.csv')
     flights = read_flights_data(folder + '/flights.csv')
     planes, planes_id = read_planes_data(folder + '/planes.csv')
-    controllers_flights_dict = {s.id: ([], []) for s in sectors}  # start flight and plane
+    controllers_flights_dict = {s.id: ([], [], []) for s in sectors}  # start flight and plane
     for f in flights:
         sector = f.flight_sector_path[0]
         indx = planes_id.index(f.plane_id)
         plane = planes[indx]
         controllers_flights_dict[sector][0].append(plane)
         controllers_flights_dict[sector][1].append((f.id, f.id + 12340 + 50))
-    controllers = [Controller(s.id, controllers_flights_dict[s.id][0], controllers_flights_dict[s.id][1]) for s in sectors]
+        controllers_flights_dict[sector][2].append(f)
+    controllers = [Controller(s.id, controllers_flights_dict[s.id][0], controllers_flights_dict[s.id][1], controllers_flights_dict[s.id][2]) for s in sectors]
     return System(flights, controllers, sectors, planes)
 
 

@@ -32,7 +32,7 @@ class Sector:
 
 # TODO everything here
 class Controller:
-    def __init__(self, id, plane_list, flight_list):
+    def __init__(self, id, plane_list, flight_list, flight_list_flights):
         self.id = id
         self.host = socket.gethostname()
         self.port = 12340 + id
@@ -42,7 +42,7 @@ class Controller:
         self.plane_list: List[Plane] = plane_list
         self.max_planes: int = MAX_PLANES
         self.flight_list: List[Tuple[ID, Address]] = flight_list 
-        self.flight_list_flights: List[object] = None # tu muszą być flights 
+        self.flight_list_flights: List[object] = flight_list_flights # tu muszą być flights
         self.incoming_flights: List[ID] = None
         # self.sector: Sector = sector
 
