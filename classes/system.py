@@ -147,6 +147,15 @@ class System:
         
     def simulation_start(self):
         print(os.getcwd())
+        for controler_ in self.list_of_controllers:
+            controler_.start()
+        for i, controler_ in enumerate(self.list_of_controllers):
+            for j in range(7):
+                if i==j: 
+                    continue
+                else:
+                    controler_.connect_to(j+1)
+
         self.generate_visualisation()
         t = threading.Timer(self.update_interval, self._simulation_run)
         t.name = "update_thread"

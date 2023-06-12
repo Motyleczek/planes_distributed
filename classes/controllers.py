@@ -44,34 +44,46 @@ class Controller:
         self.flight_list: List[Tuple[ID, Address]] = flight_list 
         self.flight_list_flights: List[object] = flight_list_flights # tu muszą być flights
         self.incoming_flights: List[ID] = None
+        self.remote_socket= None
         # self.sector: Sector = sector
-
-    def start(self):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.bind((self.host, self.port))
-        self.socket.listen(10)
-        print(f"Flight controller {self.id} is listening for connections...")
-
+    def _start(self):
         while True:
             client_socket, client_address = self.socket.accept()
             print(f"Flight controller {self.id} connected to flight controller {client_address[1]}")
             self.connected = True
             self.connections.append(client_socket)
-
             receive_thread = threading.Thread(target=self.receive_data, args=(client_socket,))
-            receive_thread.start()
+            receive_thread.start()  
+    
+    def start(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.bind((self.host, self.port))
+        self.socket.listen(10)
+        print(f"Flight controller {self.id} is listening for connections...")
+        receive_thread = threading.Thread(target=self._start)
+        receive_thread.start()  
+        
+
+          
 
     def receive_data(self, client_socket):
         while self.connected:
             try:
-                data = client_socket.recv(1024)
+                data = client_socket.recv(8096)
                 if not data:
                     break
-                message = pickle.loads(data)
-                if type(message) is str:
+                try:
+                    message = pickle.loads(data)
+                except:
+                    message = "founderror"
+                if type(message) is not tuple:
                     # if we receive only info without a plane
-                    print(f"Flight controller {self.id} received data: {message}")
+                    # print(f"Flight controller {self.id} received data: {message}")
+                    continue
+
                 else:
+                    # print(message)
+                    
                     text, flight_or_id = message
                     print(f"Flight controller {self.id} received command: {text}")
                     if text == UPDATE:
@@ -103,28 +115,46 @@ class Controller:
         self.connections.remove(client_socket)
         client_socket.close()
 
+    
     def connect_to(self, remote_id):
+         
         remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        remote_socket.connect((self.host, 12340 + remote_id))
+        try:
+            remote_socket.connect((self.host, 12340 + remote_id))
+        except ConnectionRefusedError:
+            print(f"kontroler {remote_id} odrzucony")
 
         self.connected = True
         self.connections.append(remote_socket)
+        self.remote_socket = remote_socket
+       
+        # remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # try:
+        #     remote_socket.connect((self.host, 12340 + remote_id))
+        # except ConnectionRefusedError:
+        #     print(f"kontroler {remote_id} odrzucony")
 
-        receive_thread = threading.Thread(target=self.receive_data, args=(remote_socket,))
-        receive_thread.start()
+        # self.connected = True
+        # self.connections.append(remote_socket)
 
-        while self.connected:
-            data = input(f"Flight controller {self.id}: ")
-            message = pickle.dumps(data)
-            self.broadcast(message)
+        # receive_thread = threading.Thread(target=self.receive_data, args=(remote_socket,))
+        # receive_thread.start()
 
-        self.connections.remove(remote_socket)
-        remote_socket.close()
+        # while self.connected:
+        #     data = "testmessage"
+        #     message = pickle.dumps(data)
+        #     self.broadcast(message)
+
+        # self.connections.remove(remote_socket)
+        # remote_socket.close()
+        
+#  remote_id = int(input("Enter remote flight controller ID: "))
+#             fc.connect_to(remote_id)
 
     # TODO: zrobić tak zeby wysylac spiclowana krotke
     def broadcast(self, data):
         data_picled = pickle.dumps(data)
-        for connection in self.connections:
+        for connection in [self.remote_socket]:
             try:
                 connection.send(data_picled)
             except ConnectionResetError:
@@ -132,6 +162,8 @@ class Controller:
 
     def disconnect(self):
         self.connected = False
+        if self.remote_socket is not None:
+            self.remote_socket.close()
 
     ###
     def _update_self(self):
@@ -155,7 +187,7 @@ class Controller:
         """
         new_controller_id, new_controller_address = flight_nearing.new_controller_generate(controllers_list)
   
-        self.connect_to(new_controller_address)
+        self.connect_to(new_controller_id)
         ####
         data = (INCOMING_INFO, flight_nearing.id)
         data_pickled = pickle.dumps(data)
@@ -180,7 +212,7 @@ class Controller:
         if new_controller_id == self.id:
             raise ValueError("Sending plane to ourselfes, wrong!")
         
-        self.connect_to(new_controller_address)
+        self.connect_to(new_controller_id)
         ####
         data = (INCOMING_PLANE, flight_over)
         data_pickled = pickle.dumps(data)
@@ -189,9 +221,9 @@ class Controller:
         self.disconnect()
         
         # this might be causing problems, pay attention during debug
-        for i, flight in enumerate(self.flight_list):
+        for i, flight in enumerate(self.flight_list_flights):
             if flight.id == flight_over.id:
-                self.flight_list.pop(i)
+                self.flight_list_flights.pop(i)
                 break  
         pass   
         
