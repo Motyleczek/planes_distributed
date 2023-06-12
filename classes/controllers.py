@@ -214,16 +214,15 @@ class Controller:
             print(f"Nothing to update in controller {self.id}")
             pass
         
-        for flight_ in range(2) :
-        #self.flight_list_flights:
-            # flight_.update()
+        for flight_ in self.flight_list_flights:
+            flight_.update()
 
-            print(f"updating in controler{self.id}")
-            # if flight_.close_to_leaving:
-            #     if flight_.is_leaving:
-            #         self.send_plane(flight_, list_of_controllers)
-            #     else:
-            #         self.send_info(flight_, list_of_controllers)
+            print(f"Updating in controler{self.id}, flight {flight_.id}")
+            if flight_.close_to_leaving:
+                if flight_.is_leaving:
+                    self.send_plane(flight_, list_of_controllers)
+                else:
+                    self.send_info(flight_, list_of_controllers)
             
             
             

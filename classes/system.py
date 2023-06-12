@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from datetime import date
 from datetime import datetime
 import os
+import cv2
 
 #
 
@@ -69,24 +70,54 @@ class System:
                                             6: (418, 534),
                                             7: (661, 583)}
 
-        # solution below (through pyplot) might not be as robust as one through opencv, but it is much easier
-        # to debug with a simple plt.show() in appropriate place
-        img = plt.imread('simulation_visualisation/simulation_map.png')
-        plt.imshow(img)
+
+        img = cv2.imread('simulation_visualisation/simulation_map.png', cv2.IMREAD_COLOR)
+        scaling = 2 # percent of original size
+        width = int(img.shape[1] * scaling)
+        height = int(img.shape[0] * scaling)
+        dim = (width, height)
+  
+        # resize image
+        img = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
+        
         for controller in self.list_of_controllers:
             x, y = coordinate_of_sector_on_img[controller.id]
+            x, y = int(x*scaling), int(y*scaling)
             flight_list = []
+            
             if controller.flight_list is not None:
-                for flights in controller.flight_list:
+                for flights in controller.flight_list_flights:
                     flight_list.append(flights.id)
-            s = 'flights ids: \n' + str(flight_list) + '\nincoming flights ids: ' + str(controller.incoming_flights)
-            plt.text(x, y, s, bbox=dict(fill=False, edgecolor='green', linewidth=1), fontsize=4)
-        for alert in self.supervisor.list_of_alerts:
-            x, y = coordinate_of_sector_num_on_img[alert.id_of_alerd_producer]
-            s = '!!!'
-            plt.text(x, y, s, color='red', fontsize=10)
+                    
+            s = 'flights ids: \n' + str(flight_list) + '\n incoming flights ids: ' + str(controller.incoming_flights)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            fontScale = 0.5
+            color = (255, 0, 0)
+            thickness = 1
+            y0, dy = y, 50
+            for i, line in enumerate(s.split('\n')):
+                y = y0 + i*dy
+                img = cv2.putText(img, line, (x, y), font, 
+                    fontScale, color, thickness, cv2.LINE_AA)
+            
+            
+        if self.supervisor.list_of_alerts is not None:
+            for alert in self.supervisor.list_of_alerts:
+                x, y = coordinate_of_sector_num_on_img[alert.id_of_alerd_producer]
+                x, y = int(x*scaling), int(y*scaling)
+                s = '!!!'
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                fontScale = 1
+                color = (255, 0, 255)
+                thickness = 1
+                y0, dy = y, 4
+                for i, line in enumerate(s.split('\n')):
+                    y = y0 + i*dy
+                    img = cv2.putText(img, s, (x, y), font, 
+                        fontScale, color, thickness, cv2.LINE_AA)
+                
         my_time = datetime.min.now()
-        plt.savefig(f"simulation_visualisations/simulation_step_{self.updates_done}_{my_time}.png")
+        cv2.imwrite(f"simulation_visualisations/simulation_step_{self.updates_done}_{my_time}.png", img)
         pass
         
 
