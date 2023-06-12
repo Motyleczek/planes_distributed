@@ -7,6 +7,7 @@ from classes.supervisor import Supervisor, Alert
 import matplotlib.pyplot as plt
 from datetime import date
 from datetime import datetime
+import os
 
 #
 
@@ -24,8 +25,8 @@ class System:
         self.list_of_controllers: List[Controller] = controllers    # this will be updated throughout the course of simulation, thus will
                                                                     # will be used to generate visualisation
         self.list_of_sectors: List[Sector] = sectors
-        self.list_of_planes: List[Plane]
-        self.error_log: List[str] = planes
+        self.error_log: List[str]
+        self.list_of_planes: List[Plane] = planes
         self.update_interval: int = update_interval
         self.updates_done: int = 0
         self.supervisor: Supervisor = Supervisor()
@@ -114,6 +115,7 @@ class System:
         t.start()
         
     def simulation_start(self):
+        print(os.getcwd())
         self.generate_visualisation()
         t = threading.Timer(self.update_interval, self._simulation_run)
         t.name = "update_thread"

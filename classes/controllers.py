@@ -6,6 +6,7 @@ import numpy as np
 import socket
 import threading
 import pickle
+import os
 MAX_PLANES = 5
 
 
@@ -40,7 +41,8 @@ class Controller:
         self.connections = []
         self.plane_list: List[Plane] = plane_list
         self.max_planes: int = MAX_PLANES
-        self.flight_list: List[Tuple[ID, Address]] = flight_list
+        self.flight_list: List[Tuple[ID, Address]] = flight_list 
+        self.flight_list_flights: List[object] = None # tu muszą być flights 
         self.incoming_flights: List[ID] = None
         # self.sector: Sector = sector
 
@@ -212,20 +214,52 @@ class Controller:
             print(f"Nothing to update in controller {self.id}")
             pass
         
-        for flight_ in self.flight_list:
-            flight_.update()
-            if flight_.close_to_leaving:
-                if flight_.is_leaving:
-                    self.send_plane(flight_, list_of_controllers)
-                else:
-                    self.send_info(flight_, list_of_controllers)
+        for flight_ in range(2) :
+        #self.flight_list_flights:
+            # flight_.update()
+
+            print(f"updating in controler{self.id}")
+            # if flight_.close_to_leaving:
+            #     if flight_.is_leaving:
+            #         self.send_plane(flight_, list_of_controllers)
+            #     else:
+            #         self.send_info(flight_, list_of_controllers)
             
             
             
 
-def create_flight_controller():
+# def create_flight_controller():
+#     fc_id = int(input("Enter flight controller ID: "))
+#     fc = Controller(fc_id)
+
+#     thread = threading.Thread(target=fc.start)
+#     thread.start()
+
+#     while True:
+#         print("1. Connect to another flight controller")
+#         print("2. Send list to connected flight controllers")
+#         print("3. Disconnect and exit")
+#         choice = int(input("Enter your choice: "))
+
+#         if choice == 1:
+#             remote_id = int(input("Enter remote flight controller ID: "))
+#             fc.connect_to(remote_id)
+#         elif choice == 2:
+#             message = input("Enter list to send (comma-separated values): ")
+#             data_list = message.split(",")
+#             fc.send_list(data_list)
+#             continue
+#         elif choice == 3:
+#             fc.disconnect()
+#             break
+
+#         print("===================================")
+
+#     thread.join()
+
+def create_flight_controller(plane_list, flight_list):
     fc_id = int(input("Enter flight controller ID: "))
-    fc = Controller(fc_id)
+    fc = Controller(fc_id, plane_list, flight_list)
 
     thread = threading.Thread(target=fc.start)
     thread.start()
@@ -251,8 +285,6 @@ def create_flight_controller():
         print("===================================")
 
     thread.join()
-
-
 # Usage example
 if __name__ == "__main__":
     create_flight_controller()
