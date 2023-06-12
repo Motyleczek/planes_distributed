@@ -1,8 +1,9 @@
 # imports
 import time
 from classes.classes_declarations import Address, ID, SECTOR_DISTANCE
-from classes.controllers import Controller
-from typing import Tuple, List, datetime
+# from classes.controllers import Controller
+from typing import Tuple, List
+from datetime import datetime
 
 
 
@@ -24,7 +25,7 @@ class Flight:
     def __init__(self, indx, path, date, plane_id):
         self.id: ID = indx
         self.adress: Address = 12340 + 50 + indx
-        self.controller: Tuple[ID, Address] = (path[0], path[0] + 12340)  
+        self.controller: Tuple[ID, Address] = (path[0], path[0] + 12340)
         self.flight_sector_path: List[ID] = path
         self.flight_date: str = date
         self.plane_id: ID = plane_id
@@ -47,6 +48,7 @@ class Flight:
         
         self.last_update_time: datetime = time.time()
 
+
        
         
     # to alter route:
@@ -56,13 +58,13 @@ class Flight:
     def get_distance(self):
         return self.distance_to_next_sector
     
-    def new_controller_generate(self, list_of_controllers: List[Controller]) -> Tuple(ID, Address):
+    def new_controller_generate(self, list_of_controllers: List[object]) -> Tuple[ID, Address]:
         """
         used in send_info, to get the appropriate controller to send the info to WITHOUT changing the current controller of 
         flight
         
         params: 
-        list_of_controllers - list of controllers in system
+        list_of_controllers - list of controllers in system, type Controller
         
         returns:
         controller - tuple(ID, Adress) of said controller
@@ -78,12 +80,12 @@ class Flight:
         return controller
         
         
-    def new_controller_update(self, list_of_controllers: List[Controller]):
+    def new_controller_update(self, list_of_controllers: List[object]):
         """
         funcitn to update controller and sector of the current flight
         
         params:
-        list_of_controllers - list of Controllers passed from system
+        list_of_controllers - list of Controllers passed from system, type Controller
         
         returns:
         none

@@ -1,7 +1,7 @@
 # imports:
 from typing import Tuple, List, Optional
-from classes_declarations import Address, ID, UPDATE, INCOMING_PLANE, INCOMING_INFO
-from flight import Plane, Flight
+from classes.classes_declarations import Address, ID, UPDATE, INCOMING_PLANE, INCOMING_INFO
+from classes.flight import Plane, Flight
 import numpy as np
 import socket
 import threading
@@ -31,16 +31,16 @@ class Sector:
 
 # TODO everything here
 class Controller:
-    def __init__(self, id):
+    def __init__(self, id, plane_list, flight_list):
         self.id = id
         self.host = socket.gethostname()
         self.port = 12340 + id
         self.socket = None
         self.connected = False
         self.connections = []
-        self.plane_list: List[Plane] = None
+        self.plane_list: List[Plane] = plane_list
         self.max_planes: int = MAX_PLANES
-        self.flight_list: List[Tuple[ID, Address]] = None
+        self.flight_list: List[Tuple[ID, Address]] = flight_list
         self.incoming_flights: List[ID] = None
         # self.sector: Sector = sector
 
@@ -120,7 +120,7 @@ class Controller:
         remote_socket.close()
 
     # TODO: zrobić tak zeby wysylac spiclowana krotke
-    def broadcast(self, data: Optional(str, Tuple(str, object))):
+    def broadcast(self, data):
         data_picled = pickle.dumps(data)
         for connection in self.connections:
             try:
