@@ -31,6 +31,7 @@ class System:
         self.update_interval: int = update_interval
         self.updates_done: int = 0
         self.supervisor: Supervisor = Supervisor()
+        self.thread_names = ("thr1", "thr2", "thr3", "thr4", "thr5", "thr6", "thr7")
 
     def add_flight(self):
         pass
@@ -80,6 +81,7 @@ class System:
         # resize image
         img = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
         
+        # TODO go through sockets, not list itself
         for controller in self.list_of_controllers:
             x, y = coordinate_of_sector_on_img[controller.id]
             x, y = int(x*scaling), int(y*scaling)
@@ -133,9 +135,19 @@ class System:
 
     # for simulation, update step
     def _update(self):
-        for controller_ in self.list_of_controllers:
-            controller_.update_state(self.list_of_controllers)
+        list_copy = self.list_of_controllers[:]
+        # TODO go through sockets, not list itself
+
+        # przeszedł po kadym sockecie (np petla po adresach)
+        # do kazdego wyslac str "UPDATE"
+        # wysyłane jako krotka ("UPDATE", self.list_of_controllers)
+        for i, controller_ in enumerate(self.list_of_controllers):
+            self.list_of_controllers[i].update_state(self.list_of_controllers)
+            
         self.generate_visualisation()
+        # for thread in threading.enumerate():
+        #     print(thread.__dict__)
+        # TODO make new list of cotrollers with updated controllers
         self.updates_done += 1
     
     def _simulation_run(self):
@@ -147,8 +159,8 @@ class System:
         
     def simulation_start(self):
         print(os.getcwd())
-        for controler_ in self.list_of_controllers:
-            controler_.start()
+        for i, controler_ in enumerate(self.list_of_controllers):
+            controler_.start(self.thread_names[i])
         # for i, controler_ in enumerate(self.list_of_controllers):
         #     for j in range(7):
         #         if i==j: 

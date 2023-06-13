@@ -64,12 +64,13 @@ class Controller:
             receive_thread = threading.Thread(target=self.receive_data, args=(client_socket,))
             receive_thread.start()  
     
-    def start(self):
+    def start(self, thread_name):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind((self.host, self.port))
         self.socket.listen(10)
         print(f"Flight controller {self.id} is listening for connections...")
         receive_thread = threading.Thread(target=self._start)
+        receive_thread.name = thread_name 
         receive_thread.start()  
         
         
@@ -86,8 +87,6 @@ class Controller:
                    message = "founderror"
                    
                 if type(message) is not tuple:
-                    # if we receive only info without a plane
-                    # print(f"Flight controller {self.id} received data: {message}")
                     continue
 
                 elif type(message) is tuple:
@@ -96,7 +95,7 @@ class Controller:
                     print(f"Flight controller {self.id} received command: {text}")
                     if text == UPDATE:
                         print(f"Updating controller {self.id}")
-                        self.update_state()
+                        self.update_state(flight_or_id)
                     if text == INCOMING_INFO:
                         print(f"Receiving info about plane {flight_or_id}")
                         if self.incoming_flights is None:
