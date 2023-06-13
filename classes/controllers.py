@@ -7,8 +7,17 @@ import socket
 import threading
 import pickle
 import os
+import io
 MAX_PLANES = 5
 
+class MyPickler(pickle.Pickler):
+    def reducer_override(self, obj):
+        """Custom reducer for Utils."""
+        if getattr(obj, "__name__", None) == "Flight":
+            return type, (obj.__name__, obj.__bases__, vars(obj))
+        else:
+            # For any other object, fallback to usual reduction
+            return NotImplemented
 
 ####
 # TODO init for sure
@@ -63,27 +72,26 @@ class Controller:
         receive_thread = threading.Thread(target=self._start)
         receive_thread.start()  
         
-
-          
-
+        
     def receive_data(self, client_socket):
         while self.connected:
             try:
                 data = client_socket.recv(8096)
-                if not data:
-                    break
+                # if not data:
+                #     break
                 try:
+                    # print(data)
                     message = pickle.loads(data)
                 except:
-                    message = "founderror"
+                   message = "founderror"
+                   
                 if type(message) is not tuple:
                     # if we receive only info without a plane
                     # print(f"Flight controller {self.id} received data: {message}")
                     continue
 
-                else:
-                    # print(message)
-                    
+                elif type(message) is tuple:
+                    print(message)
                     text, flight_or_id = message
                     print(f"Flight controller {self.id} received command: {text}")
                     if text == UPDATE:
@@ -98,8 +106,10 @@ class Controller:
                         else:
                             print(f"I ALREADY KNOW ITS INCOMING, said controller {self.id}")
                     if text == INCOMING_PLANE:
-                        print(f"Receiving flight {flight_or_id}")
-                        if flight_or_id.id in self.incoming_flights:
+                        print(f"Receiving flight {flight_or_id.id}")
+                        if self.incoming_flights is None:
+                            print("ALARM, PLANE WIHTOUT INFO")
+                        elif flight_or_id.id in self.incoming_flights:
                             self.incoming_flights.remove(flight_or_id.id)
                         else:
                             print("ALARM, PLANE WIHTOUT INFO")
@@ -153,10 +163,15 @@ class Controller:
 
     # TODO: zrobić tak zeby wysylac spiclowana krotke
     def broadcast(self, data):
-        data_picled = pickle.dumps(data)
+        # print(data)
+        # if type(data) is Flight:
+        #     print("picling flight")
+        #     data_picled = MyPickler.dump(data)
+        # else:
+        #     data_picled = pickle.dumps(data)
         for connection in [self.remote_socket]:
             try:
-                connection.send(data_picled)
+                connection.send(data)
             except ConnectionResetError:
                 continue
 
