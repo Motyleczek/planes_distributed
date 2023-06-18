@@ -75,6 +75,9 @@ def generate_system(folder: str) -> System:
         controllers_flights_dict[sector][1].append((f.id, f.id + 12340 + 50))
         controllers_flights_dict[sector][2].append(f)
     controllers = [Controller(s.id, controllers_flights_dict[s.id][0], controllers_flights_dict[s.id][1], controllers_flights_dict[s.id][2]) for s in sectors]
+    controllers_copy = controllers[:]
+    for elem in controllers:
+        elem.set_static_controller_list(controllers_copy)
     return System(flights, controllers, sectors, planes)
 
 

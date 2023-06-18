@@ -14,3 +14,4 @@ system_test.init_server()
 system_test.init_clients()
 for i, elem in enumerate(system_test.controller_sockets):
     print(elem)
+ 

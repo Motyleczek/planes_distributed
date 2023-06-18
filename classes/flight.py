@@ -48,7 +48,8 @@ class Flight:
         
         self.last_update_time: datetime = time.time()
 
-
+    def __str__(self):
+        return f'ID: {self.id}, Controller: {self.controller}, Distance to next sector: {self.distance_to_next_sector}, Next sector: {self.next_sector_id}'
        
         
     # to alter route:
@@ -71,6 +72,9 @@ class Flight:
         """
         
         list_of_controllers_copy = list_of_controllers.copy()
+        
+        # if self.next_sector_id == 0:
+        #     self.next_sector_id = self.flight_sector_path[0]
         
         for controller in list_of_controllers_copy:
             if controller.id == self.next_sector_id:
@@ -99,10 +103,12 @@ class Flight:
             self.num_of_sector = 0
             self.current_sector_id = self.flight_sector_path[self.num_of_sector]
         
+        ### tu jest problem 
         try:
             self.next_sector_id = self.flight_sector_path[self.num_of_sector + 1]
         except:
             self.next_sector_id = 0
+        ###
             
         for controller in list_of_controllers_copy:
             if controller.id == self.current_sector_id:

@@ -46,7 +46,7 @@ class Controller:
     def __init__(self, id, plane_list, flight_list, flight_list_flights):
         self.id = id
         # self.host = socket.gethostname()
-        # self.port = 12340 + id
+        self.port = 12340 + id
         # self.socket = None
         self.connected = False
         self.client_socket = None
@@ -55,17 +55,23 @@ class Controller:
         self.max_planes: int = MAX_PLANES
         self.flight_list: List[Tuple[ID, Address]] = flight_list 
         self.flight_list_flights: List[object] = flight_list_flights 
-        self.incoming_flights: List[ID] = None
+        self.incoming_flights: List[ID] = []
+        
+        # for flight updates:
+        self.static_controller_list = None
+    
+    def set_static_controller_list(self, controller_list):
+        self.static_controller_list = controller_list[:]
             
 
     def broadcast(self, data):
        
-        self.client_socket.send(data.encode())
+        self.client_socket.send(data)
 
         
     def receive_and_print_messages(self):
         while True:    
-            print("zbudowalismy go")
+            # print("zbudowalismy go")
             data = self.client_socket.recv(1024)
             
             try:
@@ -80,9 +86,9 @@ class Controller:
                 print(f"Flight controller {self.id} received command: {text}")
                 if text == UPDATE:
                     print(f"Updating controller {self.id}")
-                    self.update_state(flight_or_id)
+                    self.update_state()
                     # send to server flight list and incoming flights
-                    pickled_data = pickle.dump((self.flight_list_flights, self.incoming_flights))
+                    pickled_data = pickle.dumps((self.flight_list_flights, self.incoming_flights))
                     self.client_socket.send(pickled_data)
 
 
@@ -123,12 +129,34 @@ class Controller:
         none
         """  
         while True:
-            data = self.client_socket.recv(1024).decode()
-            if data == UPDATE:
-                print("Received an update from the flight controller system.")
-                print(f"Updating controller {self.id}")
-                pickled_data = pickle.dumps((self.flight_list_flights, self.incoming_flights))
+            data = self.client_socket.recv(1024)
+            data = pickle.loads(data)
+            if type(data) is not tuple:
+                raise TypeError('Sending should be done through tuples!')
+            
+            if data[0] == UPDATE:
+                # print("Received an update from the flight controller system.")
+                # print(f"Updating controller {self.id}")
+                pickled_data = pickle.dumps((UPDATE, (self.flight_list_flights[:], self.incoming_flights)))
+                # for elem in self.flight_list_flights:
+                #     print(elem)
                 self.client_socket.send(pickled_data)
+                self.update_state()
+                
+            elif data[0] == INCOMING_INFO:
+                
+                flight_id, sender_id = data[1]
+                self.incoming_flights.append(flight_id)
+                # print(f"\n Controller {self.id} successfully received info abt flight {flight_id}")
+                
+            elif data[0] == INCOMING_PLANE:
+                flight, sender_id = data[1]
+                self.flight_list_flights.append(flight)
+                print(f"Controller {self.id} successfully received flight {flight.id}")
+                if flight.id in self.incoming_flights:
+                    self.incoming_flights.remove(flight.id)
+            else:
+                raise ValueError(f"No such message as {data[0]}")
 
    
     
@@ -155,8 +183,8 @@ class Controller:
         updates_thread.start()
 
         # Create a thread to receive and print messages from other clients
-        messages_thread = threading.Thread(target=self.receive_and_print_messages, args=())
-        messages_thread.start()
+        # messages_thread = threading.Thread(target=self.receive_and_print_messages, args=())
+        # messages_thread.start()
 
         self.connected = True
     
@@ -169,7 +197,7 @@ class Controller:
         self.client_socket.close()
         self.connected = False
 
-    def update_state(self, list_of_controllers):
+    def update_state(self):
         """
         Function to do updates as called through system at appropiate times
         
@@ -179,23 +207,33 @@ class Controller:
         Returns:
         none
         """
-        print(f"Updating state of controller {self.id}")
-        if self.flight_list is None:
-            print(f"Nothing to update in controller {self.id}")
+        # print(f"Updating state of controller {self.id}")
+        if self.flight_list_flights is None:
+            # print(f"Nothing to update in controller {self.id}")
             pass
-        elif len(self.flight_list) == 0:
-            print(f"Nothing to update in controller {self.id}")
+        elif len(self.flight_list_flights) == 0:
+            # print(f"Nothing to update in controller {self.id}")
             pass
         
-        for flight_ in self.flight_list_flights:
+        # for elem in self.flight_list_flights:
+        #     print(elem)
+        dummy_flights = []
+        for flight_ in self.flight_list_flights[:]:
             flight_.update()
-
             print(f"Updating in controler{self.id}, flight {flight_.id}")
-            if flight_.close_to_leaving:
+            time.sleep(0.5)
+            if flight_.close_to_leaving or flight_.is_leaving:
                 if flight_.is_leaving:
-                    self.send_plane(flight_, list_of_controllers)
+                    self.send_plane(flight_, self.static_controller_list)
+                    print("sent plane", flight_)
                 else:
-                    self.send_info(flight_, list_of_controllers)
+                    dummy_flights.append(flight_)
+                    self.send_info(flight_, self.static_controller_list)
+            else:
+                dummy_flights.append(flight_)
+        self.flight_list_flights = dummy_flights[:]
+            
+
 
     
     ###
@@ -222,7 +260,7 @@ class Controller:
   
         # self.connect_to(new_controller_id)
         ####
-        data = (INCOMING_INFO, flight_nearing.id)
+        data = (INCOMING_INFO, (flight_nearing.id, new_controller_id))
         data_pickled = pickle.dumps(data)
         self.broadcast(data_pickled)
         ####
@@ -247,14 +285,14 @@ class Controller:
         
         
         ####
-        data = (INCOMING_PLANE, flight_over)
+        data = (INCOMING_PLANE, (flight_over, new_controller_id))
         data_pickled = pickle.dumps(data)
+        print(f"sending planne {flight_over.id} to controller {new_controller_id}")
         self.broadcast(data_pickled)
         ####
-        self.disconnect()
         
         # this might be causing problems, pay attention during debug
-        for i, flight in enumerate(self.flight_list_flights):
+        for i, flight in enumerate(self.flight_list_flights[:]):
             if flight.id == flight_over.id:
                 self.flight_list_flights.pop(i)
                 break  
