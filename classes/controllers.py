@@ -1,13 +1,15 @@
 # imports:
 from typing import Tuple, List, Optional
-from classes.classes_declarations import Address, ID, UPDATE, INCOMING_PLANE, INCOMING_INFO
+from classes.classes_declarations import Address, ID, UPDATE, INCOMING_PLANE, INCOMING_INFO, SERVER_ADDRESS
 from classes.flight import Plane, Flight
 import numpy as np
 import socket
 import threading
 import pickle
 import os
+import time
 import io
+import time
 MAX_PLANES = 5
 
 class MyPickler(pickle.Pickler):
@@ -43,205 +45,130 @@ class Sector:
 class Controller:
     def __init__(self, id, plane_list, flight_list, flight_list_flights):
         self.id = id
-        self.host = socket.gethostname()
-        self.port = 12340 + id
-        self.socket = None
+        # self.host = socket.gethostname()
+        # self.port = 12340 + id
+        # self.socket = None
         self.connected = False
+        self.client_socket = None
         self.connections = []
         self.plane_list: List[Plane] = plane_list
         self.max_planes: int = MAX_PLANES
         self.flight_list: List[Tuple[ID, Address]] = flight_list 
-        self.flight_list_flights: List[object] = flight_list_flights # tu muszą być flights
+        self.flight_list_flights: List[object] = flight_list_flights 
         self.incoming_flights: List[ID] = None
-        self.remote_socket= None
-        # self.sector: Sector = sector
-    def _start(self):
-        while True:
-            client_socket, client_address = self.socket.accept()
-            print(f"Flight controller {self.id} connected to flight controller {client_address[1]}")
-            self.connected = True
-            self.connections.append(client_socket)
-            receive_thread = threading.Thread(target=self.receive_data, args=(client_socket,))
-            receive_thread.start()  
-    
-    def start(self, thread_name):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.bind((self.host, self.port))
-        self.socket.listen(10)
-        print(f"Flight controller {self.id} is listening for connections...")
-        receive_thread = threading.Thread(target=self._start)
-        receive_thread.name = thread_name 
-        receive_thread.start()  
+            
+
+    def broadcast(self, data):
+       
+        self.client_socket.send(data.encode())
+
         
-        
-    def receive_data(self, client_socket):
-        while self.connected:
+    def receive_and_print_messages(self):
+        while True:    
+            print("zbudowalismy go")
+            data = self.client_socket.recv(1024)
+            
             try:
-                data = client_socket.recv(8096)
-                # if not data:
-                #     break
-                try:
-                    # print(data)
-                    message = pickle.loads(data)
-                except:
-                   message = "founderror"
-                   
-                if type(message) is not tuple:
-                    continue
+                # print(data)
+                message = pickle.loads(data)
+            except:
+                message = "founderror"             
+            
+            if type(message) is tuple:
+                print(message)
+                text, flight_or_id = message
+                print(f"Flight controller {self.id} received command: {text}")
+                if text == UPDATE:
+                    print(f"Updating controller {self.id}")
+                    self.update_state(flight_or_id)
+                    # send to server flight list and incoming flights
+                    pickled_data = pickle.dump((self.flight_list_flights, self.incoming_flights))
+                    self.client_socket.send(pickled_data)
 
-                elif type(message) is tuple:
-                    print(message)
-                    text, flight_or_id = message
-                    print(f"Flight controller {self.id} received command: {text}")
-                    if text == UPDATE:
-                        print(f"Updating controller {self.id}")
-                        self.update_state(flight_or_id)
-                    if text == INCOMING_INFO:
-                        print(f"Receiving info about plane {flight_or_id}")
-                        if self.incoming_flights is None:
-                            self.incoming_flights = [flight_or_id]
-                        elif not(flight_or_id in self.incoming_flights):
-                            self.incoming_flights.append(flight_or_id)
-                        else:
-                            print(f"I ALREADY KNOW ITS INCOMING, said controller {self.id}")
-                    if text == INCOMING_PLANE:
-                        print(f"Receiving flight {flight_or_id.id}")
-                        if self.incoming_flights is None:
-                            print("ALARM, PLANE WIHTOUT INFO")
-                        elif flight_or_id.id in self.incoming_flights:
-                            self.incoming_flights.remove(flight_or_id.id)
-                        else:
-                            print("ALARM, PLANE WIHTOUT INFO")
-                            # TODO: sending this alarm somewhere? how to send this to supervisor from this place?
-                        self.flight_list.append(flight_or_id)
-                        if len(self.flight_list) > self.max_planes:
-                            print("ALARM, TOO MANY PLANES")
-                            # TODO: sending this alarm somewhere? how to send this to supervisor from this place?
-                            
-            except ConnectionResetError:
-                break
 
-        self.connections.remove(client_socket)
-        client_socket.close()
+                if text == INCOMING_INFO:
+                    print(f"Receiving info about plane {flight_or_id}")
+                    if self.incoming_flights is None:
+                        self.incoming_flights = [flight_or_id]
+                    elif not(flight_or_id in self.incoming_flights):
+                        self.incoming_flights.append(flight_or_id)
+                    else:
+                        print(f"I ALREADY KNOW ITS INCOMING, said controller {self.id}")
+                if text == INCOMING_PLANE:
+                    print(f"Receiving flight {flight_or_id.id}")
+                    if self.incoming_flights is None:
+                        print("ALARM, PLANE WIHTOUT INFO")
+                    elif flight_or_id.id in self.incoming_flights:
+                        self.incoming_flights.remove(flight_or_id.id)
+                    else:
+                        print("ALARM, PLANE WIHTOUT INFO")
+                        # TODO: sending this alarm somewhere? how to send this to supervisor from this place?
+                    self.flight_list.append(flight_or_id)
+                    if len(self.flight_list) > self.max_planes:
+                        print("ALARM, TOO MANY PLANES")
+                        # TODO: sending this alarm somewhere? how to send this to supervisor from this place?        
+                                   
+               
+            data = self.client_socket.recv(1024).decode()
+            print(f"Received message: {data}")    
 
+    def receive_updates(self):
+        """
+        Method goes to use after getting UPDATE trigger from system
+
+        params:
+        none
+        
+        returns:
+        none
+        """  
+        while True:
+            data = self.client_socket.recv(1024).decode()
+            if data == UPDATE:
+                print("Received an update from the flight controller system.")
+                print(f"Updating controller {self.id}")
+                pickled_data = pickle.dumps((self.flight_list_flights, self.incoming_flights))
+                self.client_socket.send(pickled_data)
+
+   
     
-    def connect_to(self, remote_id):
-         
-        remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            remote_socket.connect((self.host, 12340 + remote_id))
-        except ConnectionRefusedError:
-            print(f"kontroler {remote_id} odrzucony")
+    def main_socket_start(self):
+        """
+        Creating client socket and connecting it to the sever, creates indiviual threads with ability to send and recive messages
+
+        params:
+        none
+        
+        returns:
+        none
+        """  
+        # Create a socket
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        # Connect to the flight controller system
+        server_address = ('localhost', SERVER_ADDRESS)
+        self.client_socket.connect(server_address)
+        print("Connected to the flight controller system.")
+
+        # Create a thread to receive updates from the flight controller system every 2 seconds
+        updates_thread = threading.Thread(target=self.receive_updates, args=())
+        updates_thread.start()
+
+        # Create a thread to receive and print messages from other clients
+        messages_thread = threading.Thread(target=self.receive_and_print_messages, args=())
+        messages_thread.start()
 
         self.connected = True
-        self.connections.append(remote_socket)
-        self.remote_socket = remote_socket
-       
-        # remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # try:
-        #     remote_socket.connect((self.host, 12340 + remote_id))
-        # except ConnectionRefusedError:
-        #     print(f"kontroler {remote_id} odrzucony")
-
-        # self.connected = True
-        # self.connections.append(remote_socket)
-
-        # receive_thread = threading.Thread(target=self.receive_data, args=(remote_socket,))
-        # receive_thread.start()
-
-        # while self.connected:
-        #     data = "testmessage"
-        #     message = pickle.dumps(data)
-        #     self.broadcast(message)
-
-        # self.connections.remove(remote_socket)
-        # remote_socket.close()
+    
+    def init_socket(self):
+        #initation made this way to set up client socket after server socket was set
+        self.main_socket_start()
         
-#  remote_id = int(input("Enter remote flight controller ID: "))
-#             fc.connect_to(remote_id)
+    def main_socket_stop(self):
 
-    # TODO: zrobić tak zeby wysylac spiclowana krotke
-    def broadcast(self, data):
-        # print(data)
-        # if type(data) is Flight:
-        #     print("picling flight")
-        #     data_picled = MyPickler.dump(data)
-        # else:
-        #     data_picled = pickle.dumps(data)
-        for connection in [self.remote_socket]:
-            try:
-                connection.send(data)
-            except ConnectionResetError:
-                continue
-
-    def disconnect(self):
+        self.client_socket.close()
         self.connected = False
-        if self.remote_socket is not None:
-            self.remote_socket.close()
 
-    ###
-    def _update_self(self):
-        pass
-    
-    def _update_self2(self):
-        pass
-    ###
-    
-    #TODO
-    # sending info to controller who will receive the plane
-    def send_info(self, flight_nearing: Flight, controllers_list: List):
-        """
-        Function to send info about a flight which will be ready to leave in the near future, determined through update_state()
-        
-        Params:
-        flight_nearing - Flight class object of the flight that will soon be ready to change controller
-        
-        Returns:
-        None
-        """
-        new_controller_id, new_controller_address = flight_nearing.new_controller_generate(controllers_list)
-  
-        self.connect_to(new_controller_id)
-        ####
-        data = (INCOMING_INFO, flight_nearing.id)
-        data_pickled = pickle.dumps(data)
-        self.broadcast(data_pickled)
-        ####
-        self.disconnect()
-        pass
-    
-    
-    def send_plane(self, flight_over: Flight, controller_list: List):
-        """
-        Function to send a plane over which was deemed ready to leave our airspace through update_state()
-        
-        Params:
-        flight_over - Flight class object of the flight that will cross over to the next controller
-        
-        Returns:
-        None
-        """
-        flight_over.new_controller_update(controller_list)
-        new_controller_id, new_controller_address = flight_over.controller
-        if new_controller_id == self.id:
-            raise ValueError("Sending plane to ourselfes, wrong!")
-        
-        self.connect_to(new_controller_id)
-        ####
-        data = (INCOMING_PLANE, flight_over)
-        data_pickled = pickle.dumps(data)
-        self.broadcast(data_pickled)
-        ####
-        self.disconnect()
-        
-        # this might be causing problems, pay attention during debug
-        for i, flight in enumerate(self.flight_list_flights):
-            if flight.id == flight_over.id:
-                self.flight_list_flights.pop(i)
-                break  
-        pass   
-        
-    # will use to update states after a time impulse given from outside
     def update_state(self, list_of_controllers):
         """
         Function to do updates as called through system at appropiate times
@@ -269,70 +196,72 @@ class Controller:
                     self.send_plane(flight_, list_of_controllers)
                 else:
                     self.send_info(flight_, list_of_controllers)
-            
-            
-            
 
-# def create_flight_controller():
-#     fc_id = int(input("Enter flight controller ID: "))
-#     fc = Controller(fc_id)
+    
+    ###
+    def _update_self(self):
+        pass
+    
+    def _update_self2(self):
+        pass
+    ###
+    
+    #TODO
+    # sending info to controller who will receive the plane
+    def send_info(self, flight_nearing: Flight, controllers_list: List):
+        """
+        Function to send info about a flight which will be ready to leave in the near future, determined through update_state()
+        
+        Params:
+        flight_nearing - Flight class object of the flight that will soon be ready to change controller
+        
+        Returns:
+        None
+        """
+        new_controller_id, new_controller_address = flight_nearing.new_controller_generate(controllers_list)
+  
+        # self.connect_to(new_controller_id)
+        ####
+        data = (INCOMING_INFO, flight_nearing.id)
+        data_pickled = pickle.dumps(data)
+        self.broadcast(data_pickled)
+        ####
+        self.disconnect()
+        pass
+    
+    
+    def send_plane(self, flight_over: Flight, controller_list: List):
+        """
+        Function to send a plane over which was deemed ready to leave our airspace through update_state()
+        
+        Params:
+        flight_over - Flight class object of the flight that will cross over to the next controller
+        
+        Returns:
+        None
+        """
+        flight_over.new_controller_update(controller_list)
+        new_controller_id, new_controller_address = flight_over.controller
+        if new_controller_id == self.id:
+            raise ValueError("Sending plane to ourselfes, wrong!")
+        
+        
+        ####
+        data = (INCOMING_PLANE, flight_over)
+        data_pickled = pickle.dumps(data)
+        self.broadcast(data_pickled)
+        ####
+        self.disconnect()
+        
+        # this might be causing problems, pay attention during debug
+        for i, flight in enumerate(self.flight_list_flights):
+            if flight.id == flight_over.id:
+                self.flight_list_flights.pop(i)
+                break  
+        pass   
+        
+    # will use to update states after a time impulse given from outside
 
-#     thread = threading.Thread(target=fc.start)
-#     thread.start()
-
-#     while True:
-#         print("1. Connect to another flight controller")
-#         print("2. Send list to connected flight controllers")
-#         print("3. Disconnect and exit")
-#         choice = int(input("Enter your choice: "))
-
-#         if choice == 1:
-#             remote_id = int(input("Enter remote flight controller ID: "))
-#             fc.connect_to(remote_id)
-#         elif choice == 2:
-#             message = input("Enter list to send (comma-separated values): ")
-#             data_list = message.split(",")
-#             fc.send_list(data_list)
-#             continue
-#         elif choice == 3:
-#             fc.disconnect()
-#             break
-
-#         print("===================================")
-
-#     thread.join()
-
-def create_flight_controller(plane_list, flight_list):
-    fc_id = int(input("Enter flight controller ID: "))
-    fc = Controller(fc_id, plane_list, flight_list)
-
-    thread = threading.Thread(target=fc.start)
-    thread.start()
-
-    while True:
-        print("1. Connect to another flight controller")
-        print("2. Send list to connected flight controllers")
-        print("3. Disconnect and exit")
-        choice = int(input("Enter your choice: "))
-
-        if choice == 1:
-            remote_id = int(input("Enter remote flight controller ID: "))
-            fc.connect_to(remote_id)
-        elif choice == 2:
-            message = input("Enter list to send (comma-separated values): ")
-            data_list = message.split(",")
-            fc.send_list(data_list)
-            continue
-        elif choice == 3:
-            fc.disconnect()
-            break
-
-        print("===================================")
-
-    thread.join()
-# Usage example
-if __name__ == "__main__":
-    create_flight_controller()
     # def _make_connection(self, adress: Address):
     #     pass
 
