@@ -1,6 +1,6 @@
 # imports:
 from typing import Tuple, List, Optional
-from classes.classes_declarations import Address, ID, UPDATE, INCOMING_PLANE, INCOMING_INFO, SERVER_ADDRESS
+from classes.classes_declarations import *
 from classes.flight import Plane, Flight
 import numpy as np
 import socket
@@ -151,10 +151,20 @@ class Controller:
                 
             elif data[0] == INCOMING_PLANE:
                 flight, sender_id = data[1]
+                if flight.id not in self.incoming_flights:
+                    # ALERT plane without info
+                    pickled_msg = (PLANE_WITHOUT_INFO, (flight.id, self.id))
+                    self.client_socket.send(pickled_data)
+                    
                 self.flight_list_flights.append(flight)
                 print(f"Controller {self.id} successfully received flight {flight.id}")
                 if flight.id in self.incoming_flights:
                     self.incoming_flights.remove(flight.id)
+                if len(self.flight_list_flights) > MAX_PLANES:
+                    # ALERT too many planes
+                    pickled_msg = (TOO_MANY_PLANES, (flight.id, self.id))
+                    self.client_socket.send(pickled_data)
+           
             else:
                 raise ValueError(f"No such message as {data[0]}")
 
@@ -228,10 +238,12 @@ class Controller:
                     print("sent plane", flight_)
                 else:
                     dummy_flights.append(flight_)
-                    self.send_info(flight_, self.static_controller_list)
+                    self. _send_info(flight_, self.static_controller_list)
             else:
                 dummy_flights.append(flight_)
         self.flight_list_flights = dummy_flights[:]
+        
+        
             
 
 
@@ -246,7 +258,7 @@ class Controller:
     
     #TODO
     # sending info to controller who will receive the plane
-    def send_info(self, flight_nearing: Flight, controllers_list: List):
+    def  _send_info(self, flight_nearing: Flight, controllers_list: List):
         """
         Function to send info about a flight which will be ready to leave in the near future, determined through update_state()
         
@@ -297,27 +309,5 @@ class Controller:
                 self.flight_list_flights.pop(i)
                 break  
         pass   
-        
-    # will use to update states after a time impulse given from outside
-
-    # def _make_connection(self, adress: Address):
-    #     pass
-
-    # def _close_connection(self, adress: Address):
-    #     pass
-
-    # def take_charge_of_plane(self):
-    #     pass
-
-    # def lose_charge_of_plane(self):
-    #     pass
-
-    # # why this function exists?
-    # def track_neighbour(self):
-    #     pass
-
-    # def send_info(self):
-    #     pass
-
-    # def receive_info(self):
-    #     pass
+    
+    

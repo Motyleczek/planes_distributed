@@ -35,7 +35,7 @@ class System:
         self.supervisor: Supervisor = Supervisor()
         self.thread_names = ("thr1", "thr2", "thr3", "thr4", "thr5", "thr6", "thr7")
         self.controller_sockets = None
-        self.controller_threads = None
+        self._controller_threads = None
         
         self.messages_to_send = {}
         
@@ -44,7 +44,7 @@ class System:
         self.controller_incoming_flight_lists = {}
        
            
-    def handle_client(self, connection, controller_id, controller_sockets):
+    def _handle_client(self, connection, controller_id, controller_sockets):
         """
         Method used to handle messages beetwen clients
 
@@ -54,6 +54,7 @@ class System:
         returns:
         none
         """  
+        time_for_eventual_simulation = time.time()
         while True:
                              
             data = connection.recv(1024)
@@ -69,33 +70,48 @@ class System:
                 self.controller_incoming_flight_lists[controller_id] = data_tuple[1]
             
             elif data[0] == INCOMING_INFO:
-                # data[1] powinno być krotką z id samolotu który nadlatuje oraz id kontrolera DO którego leci
-                # powinniśmy to przesłać do kontrolera o odpowiednim id
-                # kontroler doda to do swoich incoming flights
-                
                 flight_id, receiver_id = data[1]
                 data_to_pcl = (INCOMING_INFO, (flight_id, controller_id))
                 pickled_data = pickle.dumps(data_to_pcl)
-                self.add_to_send_later((receiver_id, pickled_data))
+                self._add_to_send_later((receiver_id, pickled_data))
                 # self.controller_sockets[receiver_id - 1].send(pickled_data)
             
             elif data[0] == INCOMING_PLANE:
-                # data[1] powinno być krotką z samolotem który nadlatuje oraz id kontrolera DO którego leci
-                # powinniśmy to przesłać do kontrolera o odpowiednim id
-                # kontroler doda to do swoich flights
                 flight, receiver_id = data[1]
                 print(f"Incoming plane {flight.id}, controller in flight: {flight.current_sector_id}, to {receiver_id} \n")
                 data_to_pcl = (INCOMING_PLANE, (flight, controller_id))
                 pickled_data = pickle.dumps(data_to_pcl)
-                self.add_to_send_later((receiver_id, pickled_data))
+                self._add_to_send_later((receiver_id, pickled_data))
                 # self.controller_sockets[receiver_id - 1].send(pickled_data)
             
-            elif data[0] in [LOST_PLANE, PLANE_WITHOUT_INFO, TOO_MANY_PLANES]:
-                raise NotImplementedError('Alerts to be implemented')
+            elif data[0] == LOST_PLANE:
+                # data 1 krotka z id samolotu który sie zgubił oraz id kontrolera który zgłasza błąd
+                flight_id, alert_origin_id = data[1]
+                alert_to_add = Alert(LOST_PLANE, alert_origin_id, flight_id)
+                self.supervisor.add_alert(alert_to_add)
+            
+            elif data[0] == PLANE_WITHOUT_INFO:
+                flight_id, alert_origin_id = data[1]
+                alert_to_add = Alert(PLANE_WITHOUT_INFO, alert_origin_id, flight_id)
+                self.supervisor.add_alert(alert_to_add)
+            
+            elif data[0] == TOO_MANY_PLANES:
+                flight_id, alert_origin_id = data[1]
+                alert_to_add = Alert(TOO_MANY_PLANES, alert_origin_id)
+                self.supervisor.add_alert(alert_to_add)
+            
+            else:
+                raise ValueError('Message received does not match any of the available schema!')
+            
+            # time_passed = time.time() - time_for_eventual_simulation
+            # if time_passed > 60 and time_passed < 70:
+            #     print("\n \n Resolving alerts \n \n")
+            #     print(self.supervisor.list_of_alerts)
+            #     self.supervisor.resolve_alerts()
                        
         connection.close()
     
-    def add_to_send_later(self, msg_tuple):
+    def _add_to_send_later(self, msg_tuple):
         keys = self.messages_to_send.keys()
         
         if len(keys) == 0:
@@ -106,7 +122,7 @@ class System:
             
         
     
-    def send_update_messages(self, controller_sockets):
+    def _send_update_messages(self, controller_sockets):
         """
         Method used to send updates to the controllers
 
@@ -139,16 +155,16 @@ class System:
                 self.controller_sockets[receiver_id-1].send(data_pickled)
             self.messages_to_send = {}
             
-            self.generate_visualisation()
+            self._generate_visualisation()
             
-    def dummy_for_tests(self):
-        for controller in self.list_of_controllers:
-            print(f"{controller.id} controller:")
-            print("its flights:")
-            for elem in controller.flight_list_flights:
-                print(elem)
+    # def _dummy_for_tests(self):
+    #     for controller in self.list_of_controllers:
+    #         print(f"{controller.id} controller:")
+    #         print("its flights:")
+    #         for elem in controller.flight_list_flights:
+    #             print(elem)
 
-    def controller_thread(self, sock, controller_sockets):
+    def _controller_thread(self, sock, controller_sockets):
         """
         Individual thread responsible for accepting new clients and starting thread for each of them
 
@@ -165,14 +181,14 @@ class System:
             print(f"Connected to: {client_address}")
 
             # Create a new thread to handle the controller
-            controller_thread = threading.Thread(target=self.handle_client, args=(connection, len(self.controller_sockets) + 1, self.controller_sockets))
-            controller_thread.start()
+            _controller_thread = threading.Thread(target=self._handle_client, args=(connection, len(self.controller_sockets) + 1, self.controller_sockets))
+            _controller_thread.start()
 
             # Store the controller socket
             self.controller_sockets.append(connection)
             
-
-    def main(self):
+    
+    def _main(self):
         """
         sets up server socket and it is responsible for creating new threads for connecting clients
         Also creates lists of connected controllers
@@ -195,39 +211,26 @@ class System:
         print("Flight controller system is now running and waiting for connections...")
 
         
-        self.controller_threads = []
+        self._controller_threads = []
         self.controller_sockets = []
 
         # Create a thread for sending update messages
-        update_thread = threading.Thread(target=self.send_update_messages, args=(self.controller_sockets,))
+        update_thread = threading.Thread(target=self._send_update_messages, args=(self.controller_sockets,))
         update_thread.start()
 
         # Create a thread for handling controller connections
-        controller_handler_thread = threading.Thread(target=self.controller_thread, args=(sock, self.controller_sockets))
+        controller_handler_thread = threading.Thread(target=self._controller_thread, args=(sock, self.controller_sockets))
         controller_handler_thread.start()
 
         # Might be usefull later
 
-        # for controller_thread in controller_threads:
-        #     controller_thread.join()
+        # for _controller_thread in _controller_threads:
+        #     _controller_thread.join()
 
         # update_thread.join()
         # sock.close()
         
-    def init_server(self):
-        self.main()    
-    
-    def init_clients(self):
-        for controller in self.list_of_controllers:
-            controller.init_socket()
-
-    # remember to correctly close sockets
-    # TODO
-    def system_reset(self):
-        pass
-
-    # TODO
-    def generate_visualisation(self):
+    def _generate_visualisation(self):
         """
         generates visualisation png from source image simulation_map.png and saves it in simulation_visualisations folder
         saves with timestamp of when the file was saved and the simulation step at which it was saved
@@ -295,11 +298,14 @@ class System:
             for alert in self.supervisor.list_of_alerts:
                 x, y = coordinate_of_sector_num_on_img[alert.id_of_alerd_producer]
                 x, y = int(x*scaling), int(y*scaling)
-                s = '!!!'
+                if alert.resolved:
+                    s = 'ok'
+                else:
+                    s = '!!!'
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 fontScale = 1
                 color = (255, 0, 255)
-                thickness = 1
+                thickness = 3
                 y0, dy = y, 4
                 for i, line in enumerate(s.split('\n')):
                     y = y0 + i*dy
@@ -309,7 +315,20 @@ class System:
         my_time = datetime.min.now()
         cv2.imwrite(f"simulation_visualisations/simulation_step_{self.updates_done}_{my_time}.png", img)
         pass
-        
+    
+    # INTERFACE
+    #########
+    def init_server(self):
+        self._main()    
+    
+    def init_clients(self):
+        for controller in self.list_of_controllers:
+            controller.init_socket()
+
+    # remember to correctly close sockets
+    # TODO
+    def system_reset(self):
+        pass
 
     def see_errors(self):
         self.supervisor.see_alerts()
@@ -317,6 +336,6 @@ class System:
     def delete_errors(self):
         self.supervisor.resolve_alerts()
     
-    # TODO: how to use this while its in threading >???
     def add_error(self, alert: Alert):
         self.supervisor.add_alert(alert)
+    ##########

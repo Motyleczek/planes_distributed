@@ -6,16 +6,16 @@ from classes.classes_declarations import PLANE_WITHOUT_INFO, LOST_PLANE, TOO_MAN
 #
 
 class Alert():
-    def __init__(self, type, id_of_alert_producer: ID): # Optional[PLANE_WITHOUT_INFO, LOST_PLANE, TOO_MANY_PLANES], id_of_alert_producer: ID):
+    def __init__(self, type, id_of_alert_producer: ID, id_of_problem_plane: ID = 0): # Optional[PLANE_WITHOUT_INFO, LOST_PLANE, TOO_MANY_PLANES], id_of_alert_producer: ID):
         self.type: Optional[PLANE_WITHOUT_INFO, LOST_PLANE, TOO_MANY_PLANES] = type
         self.id_of_alerd_producer: ID = id_of_alert_producer
+        self.id_of_problem_plane: ID = id_of_problem_plane
         self.resolved: bool = False
         
     def resolve(self):
         self.resolved = True
         
     
-# TODO
 # assuming there is only ONE supervisor obj in system!
 class Supervisor():
     def __init__(self):
